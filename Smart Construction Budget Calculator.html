@@ -1,175 +1,215 @@
 <!DOCTYPE html>
 <html ng-app="budgetApp">
 <head>
-    <title>Archisync | Smart Budget Calculator (INR)</title>
+    <title>Archisync | Pro Dashboard v3.0</title>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .calc-card { border-radius: 15px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .header-accent { border-left: 5px solid #d4af37; padding-left: 15px; }
-        .total-display { font-size: 2.5rem; font-weight: bold; color: #2c3e50; }
-        .feature-item { transition: 0.3s; cursor: pointer; }
-        .feature-item:hover { background-color: #e9ecef; }
-        .history-section { margin-top: 30px; background: white; padding: 20px; border-radius: 15px; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        .calc-card { border-radius: 20px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.08); background: white; }
+        .budget-over { color: #dc3545; font-weight: bold; animation: shake 0.5s; }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(5px); } 50% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
+        .progress { height: 12px; border-radius: 10px; }
+        .stats-card { background: #f8f9fa; border-radius: 12px; padding: 15px; border-left: 4px solid #2c3e50; }
     </style>
 </head>
 <body ng-controller="CalcController">
 
 <div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-9">
-            <!-- Main Calculator Card -->
+    <div class="row g-4">
+        <!-- Main Entry Section -->
+        <div class="col-lg-8">
             <div class="card calc-card p-4">
-                <div class="header-accent mb-4">
-                    <h2 class="mb-0">Smart Construction Estimator</h2>
-                    <small class="text-muted">Archisync India Suite - Data Persists on Save</small>
+                <div class="d-flex justify-content-between mb-4">
+                    <h3 class="fw-bold text-dark">🏗️ Archisync Pro Estimator</h3>
+                    <span class="badge bg-dark pt-2">v3.0 - Dashboard Edition</span>
                 </div>
 
-                <div class="row mt-4">
+                <!-- NEW: Budget Tracking Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small fw-bold">Budget Utilization</span>
+                        <span class="small" ng-class="{'budget-over': budgetExceeded}">
+                            ₹{{grandTotal | number:0}} / ₹{{project.maxBudget | number:0}}
+                        </span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" 
+                             ng-style="{'width': budgetPercent + '%', 'background-color': barColor}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Client Name</label>
+                        <input type="text" class="form-control" ng-model="project.clientName">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Max Budget (₹)</label>
+                        <input type="number" class="form-control" ng-model="project.maxBudget" ng-change="calculate()">
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row mt-2">
                     <div class="col-md-6">
-                        <label class="form-label">Total Area (sq. ft.)</label>
-                        <input type="number" class="form-control mb-3" ng-model="project.area" ng-change="calculate()">
-
-                        <label class="form-label">Material Quality</label>
-                        <select class="form-select mb-3" ng-model="project.material" ng-options="m.name for m in materials" ng-change="calculate()">
-                        </select>
-
-                        <label class="form-label">Labor Rate (₹/sq. ft.)</label>
-                        <input type="range" class="form-range" min="150" max="800" ng-model="project.labor" ng-change="calculate()">
-                        <div class="text-end small">₹{{project.labor}}/sq. ft.</div>
+                        <label class="form-label fw-bold">Area & Type</label>
+                        <div class="input-group mb-3">
+                            <input type="number" class="form-control" ng-model="project.area" ng-change="calculate()">
+                            <span class="input-group-text">sq. ft.</span>
+                        </div>
+                        <select class="form-select mb-3" ng-model="project.material" ng-options="m.name for m in materials" ng-change="calculate()"></select>
+                        
+                        <label class="form-label fw-bold">Labor Rate: ₹{{project.labor}}</label>
+                        <input type="range" class="form-range mb-4" min="200" max="1000" ng-model="project.labor" ng-change="calculate()">
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label">Project Extras</label>
+                        <label class="form-label fw-bold">Premium Add-ons</label>
                         <div class="list-group">
-                            <label class="list-group-item feature-item" ng-repeat="extra in extras">
-                                <input class="form-check-input me-2" type="checkbox" ng-model="extra.selected" ng-change="calculate()">
-                                {{extra.name}} (+₹{{extra.cost | number:0}})
+                            <label class="list-group-item d-flex justify-content-between align-items-center" ng-repeat="extra in extras">
+                                <span><input type="checkbox" class="form-check-input me-2" ng-model="extra.selected" ng-change="calculate()"> {{extra.name}}</span>
+                                <small class="text-muted">₹{{extra.cost / 1000}}k</small>
                             </label>
                         </div>
                     </div>
                 </div>
 
-                <hr class="my-4">
-
-                <div class="text-center bg-light p-4 rounded">
-                    <h5 class="text-uppercase text-muted small">Estimated Investment</h5>
-                    <div class="total-display">₹{{totalCost | number:2}}</div>
-                </div>
-
                 <div class="mt-4 d-grid">
-                    <!-- Added type="button" to prevent any form submission refresh -->
-                    <button type="button" class="btn btn-dark btn-lg" ng-click="saveEstimate()">Save to Archisync Dashboard</button>
+                    <button class="btn btn-primary btn-lg fw-bold" ng-click="saveEstimate()" ng-disabled="!project.area || !project.clientName">
+                        Sync Project Data
+                    </button>
                 </div>
             </div>
+        </div>
 
-            <!-- HISTORY TABLE: This shows where the data goes! -->
-            <div class="history-section shadow-sm" ng-show="history.length > 0">
-                <h4 class="mb-3">Saved Estimates History</h4>
-                <table class="table">
-                    <thead>
+        <!-- Sidebar Analytics Section -->
+        <div class="col-lg-4">
+            <div class="card calc-card p-4 h-100 text-center">
+                <h5 class="fw-bold mb-4">Cost Analysis</h5>
+                
+                <div class="stats-card mb-3">
+                    <small class="text-muted">GST (18%)</small>
+                    <h5 class="fw-bold text-warning">₹{{taxAmount | number:0}}</h5>
+                </div>
+
+                <div class="stats-card mb-3">
+                    <small class="text-muted">Total Investment</small>
+                    <h2 class="fw-bold text-dark">₹{{grandTotal | number:0}}</h2>
+                </div>
+
+                <div class="mt-4 p-3 border rounded">
+                    <h6 class="small fw-bold mb-3">Cost Composition</h6>
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Materials</span> <span>{{materialPercent}}%</span>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span>Labor & Extras</span> <span>{{100 - materialPercent}}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="col-12 mt-4">
+            <div class="card calc-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Project Vault</h5>
+                    <input type="text" class="form-control w-25" placeholder="Search Client..." ng-model="search">
+                </div>
+                <table class="table align-middle">
+                    <thead class="table-light">
                         <tr>
-                            <th>Date</th>
-                            <th>Area (sq.ft)</th>
-                            <th>Quality</th>
+                            <th>Client</th>
+                            <th>Dimensions</th>
                             <th>Total Cost</th>
+                            <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="item in history track by $index">
-                            <td>{{item.date}}</td>
-                            <td>{{item.area}}</td>
-                            <td>{{item.quality}}</td>
-                            <td><strong>₹{{item.total | number:0}}</strong></td>
-                            <td><button class="btn btn-danger btn-sm" ng-click="deleteItem($index)">Delete</button></td>
+                        <tr ng-repeat="item in history | filter:search">
+                            <td><strong>{{item.client}}</strong><br><small class="text-muted">{{item.date}}</small></td>
+                            <td>{{item.area}} sq. ft.</td>
+                            <td class="fw-bold">₹{{item.total | number:0}}</td>
+                            <td><span class="badge" ng-class="item.total > item.budget ? 'bg-danger' : 'bg-success'">
+                                {{item.total > item.budget ? 'Over Budget' : 'Within Budget'}}
+                            </span></td>
+                            <td><button class="btn btn-sm btn-outline-danger" ng-click="deleteItem($index)">Remove</button></td>
                         </tr>
                     </tbody>
                 </table>
-                <button class="btn btn-outline-secondary btn-sm" ng-click="clearAll()">Clear All History</button>
             </div>
-            
-            <p class="text-center mt-3 text-muted">© 2026 Archisync Technology Solutions (India)</p>
         </div>
     </div>
 </div>
 
 <script>
     var app = angular.module('budgetApp', []);
-
     app.controller('CalcController', function($scope) {
         
-        // 1. Load History from LocalStorage on Startup
-        var savedData = localStorage.getItem('archisync_history');
-        $scope.history = savedData ? JSON.parse(savedData) : [];
+        // Storage logic
+        var saved = localStorage.getItem('archisync_v3');
+        $scope.history = saved ? JSON.parse(saved) : [];
 
-        $scope.project = {
-            area: 1200,
-            labor: 250,
-            material: null
-        };
-
+        // Data
         $scope.materials = [
-            { name: 'Standard (Local)', rate: 1200 },
-            { name: 'Premium (Branded)', rate: 1800 },
-            { name: 'Luxury (Imported)', rate: 3200 }
+            { name: 'Economy Grade', rate: 1150 },
+            { name: 'Professional Grade', rate: 1900 },
+            { name: 'Ultra-Luxury Grade', rate: 3500 }
         ];
-        
-        $scope.project.material = $scope.materials[1];
 
         $scope.extras = [
-            { name: 'Smart Home Automation', cost: 75000, selected: false },
-            { name: 'Solar Panel System', cost: 150000, selected: false },
-            { name: 'Modular Kitchen Upgrade', cost: 250000, selected: false }
+            { name: 'Modular Kitchen', cost: 250000, selected: false },
+            { name: 'Smart Automation', cost: 120000, selected: false },
+            { name: 'Landscaping', cost: 80000, selected: false }
         ];
 
-        $scope.totalCost = 0;
+        // Defaults
+        $scope.project = { clientName: "", area: 1200, labor: 300, maxBudget: 3000000, material: $scope.materials[1] };
 
         $scope.calculate = function() {
-            if (!$scope.project.area) {
-                $scope.totalCost = 0;
-                return;
-            }
+            if (!$scope.project.area) { $scope.grandTotal = 0; return; }
+
+            // Math
             var base = $scope.project.area * ($scope.project.material.rate + parseInt($scope.project.labor));
-            var extrasTotal = 0;
-            angular.forEach($scope.extras, function(extra) {
-                if (extra.selected) extrasTotal += extra.cost;
-            });
-            $scope.totalCost = base + extrasTotal;
-        };
+            var extrasSum = 0;
+            angular.forEach($scope.extras, function(e) { if(e.selected) extrasSum += e.cost; });
 
-        // 2. NEW SAVE FUNCTION: Pushes to list AND LocalStorage
-        $scope.saveEstimate = function() {
-            var newEntry = {
-                date: new Date().toLocaleTimeString() + " " + new Date().toLocaleDateString(),
-                area: $scope.project.area,
-                quality: $scope.project.material.name,
-                total: $scope.totalCost
-            };
+            $scope.subTotal = base + extrasSum;
+            $scope.taxAmount = $scope.subTotal * 0.18;
+            $scope.grandTotal = $scope.subTotal + $scope.taxAmount;
 
-            // Add to the view
-            $scope.history.push(newEntry);
-
-            // Save to browser memory
-            localStorage.setItem('archisync_history', JSON.stringify($scope.history));
+            // Budget Analysis Logic
+            $scope.budgetPercent = ($scope.grandTotal / $scope.project.maxBudget) * 100;
+            $scope.budgetExceeded = $scope.grandTotal > $scope.project.maxBudget;
             
-            alert("Estimate Saved to History Table Below!");
+            // UI Feedback Logic
+            if($scope.budgetPercent < 70) $scope.barColor = "#198754"; // Green
+            else if($scope.budgetPercent < 100) $scope.barColor = "#ffc107"; // Yellow
+            else $scope.barColor = "#dc3545"; // Red
+
+            // Composition Logic
+            var materialOnly = $scope.project.area * $scope.project.material.rate;
+            $scope.materialPercent = Math.round((materialOnly / $scope.subTotal) * 100);
         };
 
-        // 3. Delete individual item
-        $scope.deleteItem = function(index) {
-            $scope.history.splice(index, 1);
-            localStorage.setItem('archisync_history', JSON.stringify($scope.history));
+        $scope.saveEstimate = function() {
+            var entry = {
+                client: $scope.project.clientName,
+                area: $scope.project.area,
+                total: $scope.grandTotal,
+                budget: $scope.project.maxBudget,
+                date: new Date().toLocaleDateString()
+            };
+            $scope.history.unshift(entry);
+            localStorage.setItem('archisync_v3', JSON.stringify($scope.history));
+            alert("Project synced to Vault!");
         };
 
-        // 4. Clear everything
-        $scope.clearAll = function() {
-            if(confirm("Are you sure you want to delete all saved data?")) {
-                $scope.history = [];
-                localStorage.removeItem('archisync_history');
-            }
-        };
+        $scope.deleteItem = function(i) { $scope.history.splice(i, 1); localStorage.setItem('archisync_v3', JSON.stringify($scope.history)); };
 
         $scope.calculate();
     });
